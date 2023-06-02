@@ -1,8 +1,9 @@
 import os
-import numpy as np
+
 import matplotlib as mpl
-from matplotlib import colors
+import numpy as np
 import shapely
+from matplotlib import colors
 
 Lx = 180000
 Ly = 100000
@@ -233,12 +234,14 @@ def densify_geometry(line, step, keep_internal_nodes=True):
     lines_strings = []
     if keep_internal_nodes:
         for idx in range(1, len(line)):
-            lines_strings.append(shapely.geometry.LineString(line[idx-1:idx+1]))
+            lines_strings.append(
+                shapely.geometry.LineString(line[idx - 1 : idx + 1])
+            )
     else:
         lines_strings = [shapely.geometry.LineString(line)]
-    
+
     for line_string in lines_strings:
-        length_m = line_string.length # get the length
+        length_m = line_string.length  # get the length
         for distance in np.arange(0, length_m + step, step):
             point = line_string.interpolate(distance)
             xy_tuple = (point.x, point.y)
@@ -249,7 +252,7 @@ def densify_geometry(line, step, keep_internal_nodes=True):
             xy_tuple = line_string.coords[-1]
             if xy_tuple not in xy:
                 xy.append(xy_tuple)
-                   
+
     return xy
 
 
@@ -263,7 +266,7 @@ def circle_function(center=(0, 0), radius=1.0, dtheta=10.0):
 def write_petscdb(ws, ncpus):
     # write petsc cfg for parallel solve
     petsc_db_file = os.path.join(ws, ".petscrc")
-    with open(petsc_db_file, 'w') as petsc_file:
+    with open(petsc_db_file, "w") as petsc_file:
         if ncpus > 1:
             petsc_file.write("-ksp_type bcgs\n")
             petsc_file.write("-pc_type bjacobi\n")
