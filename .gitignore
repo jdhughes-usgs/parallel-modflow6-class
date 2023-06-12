@@ -169,4 +169,8 @@ cython_debug/
 *.hds
 *.ucn
 
+# directories created by notebooks
+examples/basin_base/
+
+
 
