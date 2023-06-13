@@ -1,8 +1,8 @@
 import os
+import pathlib as pl
 
 import matplotlib as mpl
 import numpy as np
-import pathlib as pl
 import shapely
 from matplotlib import colors
 
@@ -283,26 +283,33 @@ def write_petscdb(ws, ncpus):
             petsc_file.write("-options_left no\n")
     return
 
+
 def _build_nproc(nrow_blocks, ncol_blocks):
     if nrow_blocks * ncol_blocks == 0:
         nproc = max(nrow_blocks, ncol_blocks)
     else:
         nproc = nrow_blocks * ncol_blocks
     return nproc
-    
+
+
 def _build_workspace(nrow_blocks, ncol_blocks):
     nproc = _build_nproc(nrow_blocks, ncol_blocks)
     if nrow_blocks * ncol_blocks == 0:
-        parallel_ws = parallel_ws = pl.Path(f"../examples/basin_metis_{nproc}p")
+        parallel_ws = parallel_ws = pl.Path(
+            f"../examples/ex-basin/basin_metis_{nproc}p"
+        )
     else:
-        parallel_ws = pl.Path(f"../examples/basin_{nrow_blocks}x{ncol_blocks}_{nproc}p")   
+        parallel_ws = pl.Path(
+            f"../examples/ex-basin/basin_{nrow_blocks}x{ncol_blocks}_{nproc}p"
+        )
     return parallel_ws
+
 
 def set_parallel_data(nrow_blocks, ncol_blocks):
     # trap potential errors
     if nrow_blocks == 0 and ncol_blocks == 0:
         raise ValueError("nrow_blocks or ncol_blocks must be greater than 0")
-    
+
     # derive a few variables from parallel settings above
     nproc = _build_nproc(nrow_blocks, ncol_blocks)
     parallel_ws = _build_workspace(nrow_blocks, ncol_blocks)
@@ -312,20 +319,24 @@ def set_parallel_data(nrow_blocks, ncol_blocks):
         use_metis = False
     return use_metis, nproc, parallel_ws
 
+
 def get_parallel_data(nrow_blocks, ncol_blocks):
     parallel_ws = _build_workspace(nrow_blocks, ncol_blocks)
     if not parallel_ws.is_dir():
         raise FileNotFoundError(f"{str(parallel_ws)} does not exist")
     return parallel_ws
 
+
 def simple_mapping(nrow_blocks, ncol_blocks, modelgrid):
     """
     Create a simple mapping array for a structured grid
 
-    
+
     """
     if modelgrid.grid_type != "structured":
-        raise ValueError(f"modelgrid must be 'structured' not {gwf.modelgrid.grid_type}")
+        raise ValueError(
+            f"modelgrid must be 'structured' not {gwf.modelgrid.grid_type}"
+        )
     nproc = nrow_blocks * ncol_blocks
     nrow, ncol = modelgrid.nrow, modelgrid.ncol
     row_inc, col_inc = int(nrow / nrow_blocks), int(ncol / ncol_blocks)
@@ -360,6 +371,6 @@ def simple_mapping(nrow_blocks, ncol_blocks, modelgrid):
             ] = ival
             model_row_col_offset[ival - 1] = (row_blocks[idx], col_blocks[jdx])
             # increment model number
-            ival += 1  
+            ival += 1
 
     return mask

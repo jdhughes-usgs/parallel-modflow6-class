@@ -170,7 +170,7 @@ cython_debug/
 *.ucn
 
 # directories created by notebooks
-examples/basin_base/
+examples/ex-basin/
 
 
 
