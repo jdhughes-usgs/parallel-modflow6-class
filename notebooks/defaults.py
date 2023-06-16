@@ -294,6 +294,13 @@ def _build_workspace(nrow_blocks, ncol_blocks):
         )
     return parallel_ws
 
+def run_simulation():
+    SLURM_JOB_NAME = os.environ.get("SLURM_JOB_NAME")
+    if SLURM_JOB_NAME is None:
+        run = True
+    else:
+        run = False   
+    return run
 
 def set_parallel_data(nrow_blocks, ncol_blocks):
     # trap potential errors
@@ -307,14 +314,8 @@ def set_parallel_data(nrow_blocks, ncol_blocks):
         use_metis = True
     else:
         use_metis = False
-
-    SLURM_JOB_NAME = os.environ.get("SLURM_JOB_NAME")
-    if SLURM_JOB_NAME is None:
-        run_simulation = True
-    else:
-        run_simulation = False
         
-    return use_metis, nproc, parallel_ws, run_simulation
+    return use_metis, nproc, parallel_ws, run_simulation()
 
 
 def get_parallel_data(nrow_blocks, ncol_blocks):
