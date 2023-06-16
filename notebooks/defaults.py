@@ -257,30 +257,20 @@ def densify_geometry(line, step, keep_internal_nodes=True):
     return xy
 
 
-def circle_function(center=(0, 0), radius=1.0, dtheta=10.0):
-    angles = np.arange(0.0, 360.0, dtheta) * np.pi / 180.0
-    xpts = center[0] + np.cos(angles) * radius
-    ypts = center[1] + np.sin(angles) * radius
-    return np.array([(x, y) for x, y in zip(xpts, ypts)])
-
-
-def write_petscdb(ws, ncpus):
+def write_petscdb(ws, use_gamg=False):
     # write petsc cfg for parallel solve
     petsc_db_file = os.path.join(ws, ".petscrc")
     with open(petsc_db_file, "w") as petsc_file:
-        if ncpus > 1:
+        if use_gamg:
+            petsc_file.write("-ksp_type bcgs\n")
+            petsc_file.write("-pc_type gamg\n")
+        else:
             petsc_file.write("-ksp_type bcgs\n")
             petsc_file.write("-pc_type bjacobi\n")
             petsc_file.write("-sub_pc_type ilu\n")
             petsc_file.write("-sub_pc_factor_levels 2\n")
-            petsc_file.write("-dvclose 1.0e-6\n")
-            petsc_file.write("-options_left no\n")
-        else:
-            petsc_file.write("-ksp_type bcgs\n")
-            petsc_file.write("-pc_type ilu\n")
-            petsc_file.write("-pc_factor_levels 2\n")
-            petsc_file.write("-dvclose 1.0e-6\n")
-            petsc_file.write("-options_left no\n")
+        petsc_file.write("-dvclose 1.0e-6\n")
+        petsc_file.write("-options_left no\n")
     return
 
 
@@ -317,7 +307,14 @@ def set_parallel_data(nrow_blocks, ncol_blocks):
         use_metis = True
     else:
         use_metis = False
-    return use_metis, nproc, parallel_ws
+
+    SLURM_JOB_NAME = os.environ.get("SLURM_JOB_NAME")
+    if SLURM_JOB_NAME is None:
+        run_simulation = True
+    else:
+        run_simulation = False
+        
+    return use_metis, nproc, parallel_ws, run_simulation
 
 
 def get_parallel_data(nrow_blocks, ncol_blocks):
