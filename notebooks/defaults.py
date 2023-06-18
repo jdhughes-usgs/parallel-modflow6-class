@@ -247,7 +247,7 @@ def set_structured_idomain(
     boundary: List[tuple],
 ) -> None:
     """
-    Set the idomain for structured grid using a boundary line.
+    Set the idomain for a structured grid using a boundary line.
 
     Parameters
     ----------
@@ -263,7 +263,7 @@ def set_structured_idomain(
     """
     if modelgrid.grid_type != "structured":
         raise ValueError(
-            f"modelgrid must be 'structured' not {modelgrid.grid_type}"
+            f"modelgrid must be 'structured' not '{modelgrid.grid_type}'"
         )
 
     ix = GridIntersect(modelgrid, method="vertex", rtree=True)
@@ -350,8 +350,7 @@ def _build_nproc(
 
 
 def _build_workspace(
-    nrow_blocks: int,
-    ncol_blocks: int,
+    nrow_blocks: int, ncol_blocks: int, voronoi: bool
 ) -> os.PathLike:
     """
 
@@ -361,6 +360,10 @@ def _build_workspace(
         Number of models in the row direction of a domain.
     ncol_blocks: int
         Number of models in the column direction of a domain.
+    voronoi: bool
+        Boolean that determines if it is a voronoi grid is being used.
+        (Default is False)
+
 
     Returns
     -------
@@ -368,13 +371,21 @@ def _build_workspace(
         Path to simulation workspace
 
     """
+    if voronoi:
+        if nrow_blocks > 0 and ncol_blocks > 0:
+            raise ValueError(
+                "For voronoi grids nrow_blocks or ncol_blocks "
+                + "must be greater than 0"
+            )
     nproc = _build_nproc(nrow_blocks, ncol_blocks)
-    base_path = "../examples/ex-basin/basin_"
+    workspace = "../examples/ex-basin/basin_"
     if nrow_blocks * ncol_blocks == 0:
-        workspace = f"{base_path}metis_{nproc}p"
+        if voronoi:
+            workspace = f"{workspace}voronoi_"
+        workspace = f"{workspace}metis"
     else:
-        workspace = f"{base_path}{nrow_blocks}x{ncol_blocks}_{nproc}p"
-    return pl.Path(workspace)
+        workspace = f"{workspace}{nrow_blocks}x{ncol_blocks}"
+    return pl.Path(f"{workspace}_{nproc}p")
 
 
 def local_simulation() -> bool:
@@ -399,7 +410,8 @@ def local_simulation() -> bool:
 def set_parallel_data(
     nrow_blocks: int,
     ncol_blocks: int,
-) -> Tuple[bool, int, os.PathLike, bool]:
+    voronoi: bool = False,
+) -> Tuple[bool, int, os.PathLike]:
     """
 
     Parameters
@@ -408,6 +420,10 @@ def set_parallel_data(
         Number of models in the row direction of a domain.
     ncol_blocks: int
         Number of models in the column direction of a domain.
+    voronoi: bool
+        Boolean that determines if it is a voronoi grid is being used.
+        (Default is False)
+
 
     Returns
     -------
@@ -418,9 +434,6 @@ def set_parallel_data(
     workspace: PathLike
         path to unique simulation workspace based on whether metis is
         used and the maximum number of processors that will be used
-    local_simulation: bool
-
-
 
     """
     # trap potential errors
@@ -429,16 +442,20 @@ def set_parallel_data(
 
     # derive a few variables from parallel settings above
     nproc = _build_nproc(nrow_blocks, ncol_blocks)
-    workspace = _build_workspace(nrow_blocks, ncol_blocks)
+    workspace = _build_workspace(nrow_blocks, ncol_blocks, voronoi)
     if "metis" in str(workspace):
         use_metis = True
     else:
         use_metis = False
 
-    return use_metis, nproc, workspace, local_simulation()
+    return use_metis, nproc, workspace
 
 
-def get_parallel_data(nrow_blocks: int, ncol_blocks: int) -> os.PathLike:
+def get_parallel_data(
+    nrow_blocks: int,
+    ncol_blocks: int,
+    voronoi: bool = False,
+) -> os.PathLike:
     """
     Determine the unique workspace for simulation files created by the model
     splitter based on the number of models in the row and column directions.
@@ -450,6 +467,9 @@ def get_parallel_data(nrow_blocks: int, ncol_blocks: int) -> os.PathLike:
         Number of models in the row direction of a domain.
     ncol_blocks: int
         Number of models in the column direction of a domain.
+    voronoi: bool
+        Boolean that determines if it is a voronoi grid is being used.
+        (Default is False)
 
     Returns
     -------
@@ -458,7 +478,7 @@ def get_parallel_data(nrow_blocks: int, ncol_blocks: int) -> os.PathLike:
         used and the maximum number of processors that will be used
 
     """
-    workspace = _build_workspace(nrow_blocks, ncol_blocks)
+    workspace = _build_workspace(nrow_blocks, ncol_blocks, voronoi=voronoi)
     if not workspace.is_dir():
         raise FileNotFoundError(f"{str(workspace)} does not exist")
     return workspace
