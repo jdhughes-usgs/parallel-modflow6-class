@@ -1,84 +1,30 @@
 import os
 import pathlib as pl
+from typing import List, Tuple, Union
 
-import matplotlib as mpl
+import flopy
 import numpy as np
 import shapely
-from matplotlib import colors
+from flopy.utils.gridintersect import GridIntersect
+from shapely.geometry import LineString, Polygon
 
+# domain information
 Lx = 180000
 Ly = 100000
 extent = (0, Lx, 0, Ly)
 levels = np.arange(10, 110, 10)
 vmin, vmax = 0.0, 100.0
 
+# plotting information
 figwidth = 180  # 90 # mm
 figwidth = figwidth / 10 / 2.54  # inches
 figheight = figwidth
 figsize = (figwidth, figheight)
 
-levels = np.arange(10, 110, 10)
-contour_color = "black"
-contour_style = "--"
-contour_dict = {
-    "levels": levels,
-    "linewidths": 0.5,
-    "colors": contour_color,
-    "linestyles": contour_style,
-}
-mv_contour_dict = {
-    "linewidths": 0.5,
-    "colors": contour_color,
-    "linestyles": contour_style,
-}
-mv_contour_dict = {
-    "linewidths": 0.5,
-    "colors": contour_color,
-    "linestyles": contour_style,
-}
-mv_gwt_contour_dict = {
-    "linewidths": 0.75,
-    "colors": contour_color,
-    "linestyles": contour_style,
-}
-contour_label_dict = {
-    "linewidth": 0.5,
-    "color": contour_color,
-    "linestyle": contour_style,
-}
-contour_gwt_label_dict = {
-    "linewidth": 0.75,
-    "color": contour_color,
-    "linestyle": contour_style,
-}
-clabel_dict = {
-    "inline": True,
-    "fmt": "%1.0f",
-    "fontsize": 6,
-    "inline_spacing": 0.5,
-}
-font_dict = {"fontsize": 5, "color": "black"}
-grid_dict = {"lw": 0.25, "color": "0.5"}
-refinement_dict = {"color": "magenta", "ls": ":", "lw": 1.0}
-arrowprops = dict(
-    arrowstyle="-",
-    edgecolor="red",
-    lw=0.5,
-    shrinkA=0.15,
-    shrinkB=0.15,
-)
-river_dict = {"color": "blue", "linestyle": "-", "linewidth": 1}
-
-layer_cmap = colors.ListedColormap(["white", "green", "blue"])
-drain_cmap = colors.ListedColormap(["red", "cyan"])
-lake_cmap = colors.ListedColormap(["cyan"])
-clay_cmap = colors.ListedColormap(["brown"])
-
-intersection_cmap = "Pastel2"
-temp_cmap = mpl.colormaps[intersection_cmap]
-intersection_rgba = temp_cmap(0)
-
-boundary = """1.868012422360248456e+05 4.695652173913043953e+04
+# Geometry data
+# vertices defining basin boundary and river segments
+geometry = {
+    "boundary": """1.868012422360248456e+05 4.695652173913043953e+04
 1.790372670807453396e+05 5.204968944099379587e+04
 1.729813664596273447e+05 5.590062111801243009e+04
 1.672360248447204940e+05 5.987577639751553215e+04
@@ -132,9 +78,8 @@ boundary = """1.868012422360248456e+05 4.695652173913043953e+04
 1.694099378881987650e+05 2.434782608695652743e+04
 1.782608695652173774e+05 2.981366459627329095e+04
 1.833850931677018234e+05 3.180124223602484562e+04
-1.868012422360248456e+05 3.577639751552795497e+04"""
-
-streamseg1 = """1.868012422360248456e+05 4.086956521739130403e+04
+1.868012422360248456e+05 3.577639751552795497e+04""",
+    "streamseg1": """1.868012422360248456e+05 4.086956521739130403e+04
 1.824534161490683327e+05 4.086956521739130403e+04
 1.770186335403726553e+05 4.124223602484472940e+04
 1.737577639751552779e+05 4.186335403726709046e+04
@@ -171,9 +116,8 @@ streamseg1 = """1.868012422360248456e+05 4.086956521739130403e+04
 3.990683229813664366e+04 6.335403726708075556e+04
 3.276397515527949508e+04 6.409937888198757719e+04
 2.934782608695651652e+04 6.509316770186336362e+04
-2.546583850931676716e+04 6.832298136645962950e+04"""
-
-streamseg2 = """7.025161490683228476e+04 4.375093167701864149e+04
+2.546583850931676716e+04 6.832298136645962950e+04""",
+    "streamseg2": """7.025161490683228476e+04 4.375093167701864149e+04
 6.816770186335404287e+04 4.273291925465839449e+04
 6.490683229813665093e+04 4.211180124223603343e+04
 6.164596273291925900e+04 4.173913043478262261e+04
@@ -186,9 +130,8 @@ streamseg2 = """7.025161490683228476e+04 4.375093167701864149e+04
 3.649068322981366509e+04 3.416149068322981475e+04
 3.322981366459628043e+04 3.242236024844721760e+04
 3.012422360248447148e+04 3.105590062111801672e+04
-2.608695652173913550e+04 2.957521739130435890e+04"""
-
-streamseg3 = """1.059006211180124228e+05 4.335403726708074828e+04
+2.608695652173913550e+04 2.957521739130435890e+04""",
+    "streamseg3": """1.059006211180124228e+05 4.335403726708074828e+04
 1.029503105590062187e+05 4.223602484472050128e+04
 1.004658385093167890e+05 4.024844720496894297e+04
 9.937888198757765349e+04 3.788819875776398112e+04
@@ -199,9 +142,8 @@ streamseg3 = """1.059006211180124228e+05 4.335403726708074828e+04
 7.872670807453416637e+04 2.670807453416148928e+04
 7.329192546583851799e+04 2.385093167701863058e+04
 6.863354037267081731e+04 2.111801242236025064e+04
-6.304347826086958230e+04 1.863354037267081003e+04"""
-
-streamseg4 = """1.371118012422360480e+05 4.472049689440994553e+04
+6.304347826086958230e+04 1.863354037267081003e+04""",
+    "streamseg4": """1.371118012422360480e+05 4.472049689440994553e+04
 1.321428571428571595e+05 4.720496894409938250e+04
 1.285714285714285652e+05 4.981366459627330187e+04
 1.243788819875776535e+05 5.341614906832298584e+04
@@ -213,10 +155,29 @@ streamseg4 = """1.371118012422360480e+05 4.472049689440994553e+04
 9.192546583850932075e+04 6.633540372670808574e+04
 8.881987577639751544e+04 7.242236024844722124e+04
 8.586956521739131131e+04 7.552795031055902655e+04
-8.369565217391305487e+04 7.962732919254660374e+04"""
+8.369565217391305487e+04 7.962732919254660374e+04""",
+}
 
 
-def string2geom(geostring, conversion=None):
+def string2geom(
+    geostring: str,
+    conversion: float = None,
+) -> List[tuple]:
+    """
+    Convert a multi-line string of vertices to a list of x,y vertices
+
+    Parameters
+    ----------
+    geostring: str
+        multi-line string of x,y vertices
+    conversion: float, options
+        x,y, vertices conversion factor (Default is None)
+
+    Returns
+    -------
+    res: List[tuple]
+        list of x,y vertices
+    """
     if conversion is None:
         multiplier = 1.0
     else:
@@ -230,7 +191,31 @@ def string2geom(geostring, conversion=None):
     return res
 
 
-def densify_geometry(line, step, keep_internal_nodes=True):
+def densify_geometry(
+    line: List[tuple],
+    step: float,
+    keep_internal_nodes: bool = True,
+) -> List[tuple]:
+    """
+    Add additional points along a line of vertices. Used to add additional
+    points for triangle to generate a triangular mesh.
+
+    Parameters
+    ----------
+    line : List[tuple]
+        list of x,y tuples defining a line feature
+    step : float
+        distance between interpolated points on a line feature
+    keep_internal_nodes: bool
+        boolean indicating if the original x,y vertices should be preserved.
+        By default, shapely will only keep the first and last x,y vertex pair.
+
+    Returns
+    -------
+    xy: List[tuple]
+        list of x,y vertices
+
+    """
     xy = []  # list of tuple of coordinates
     lines_strings = []
     if keep_internal_nodes:
@@ -257,15 +242,78 @@ def densify_geometry(line, step, keep_internal_nodes=True):
     return xy
 
 
-def write_petscdb(ws, use_gamg=False):
+def set_structured_idomain(
+    modelgrid: flopy.discretization.StructuredGrid,
+    boundary: List[tuple],
+) -> None:
+    """
+    Set the idomain for structured grid using a boundary line.
+
+    Parameters
+    ----------
+    modelgrid: flopy.discretization.StructuredGrid
+        flopy modelgrid object
+    boundary: List(tuple)
+        list of x,y tuples defining the boundary of the active model domain.
+
+    Returns
+    -------
+    None
+
+    """
+    if modelgrid.grid_type != "structured":
+        raise ValueError(
+            f"modelgrid must be 'structured' not {modelgrid.grid_type}"
+        )
+
+    ix = GridIntersect(modelgrid, method="vertex", rtree=True)
+    result = ix.intersect(Polygon(boundary))
+    idx = [coords for coords in result.cellids]
+    idx = np.array(idx, dtype=int)
+    nr = idx.shape[0]
+    if idx.ndim == 1:
+        idx = idx.reshape((nr, 1))
+
+    idx = tuple([idx[:, i] for i in range(idx.shape[1])])
+    idomain = np.zeros(modelgrid.shape[1:], dtype=int)
+    idomain[idx] = 1
+    idomain = idomain.reshape(modelgrid.shape)
+
+    # set modelgrid idomain
+    modelgrid.idomain = idomain
+    return
+
+
+def write_petscdb(
+    workspace: Union[str, os.PathLike],
+    ksp_type: str = "bcgs",
+    use_gamg: bool = False,
+) -> None:
+    """
+    Write a PETSc database file
+
+    Parameters
+    ----------
+    workspace: str or PathLike
+        path to the PETSc database file
+    ksp_type: str
+        PETSc Krylov solver type. Possible options are cg or bcgs.
+        (Default is bcgs)
+    use_gamg: bool, optional
+        Boolean that determines if the PETSc Geometric Algabraic Multi-Grid
+        solver should be used (Default is False)
+
+    Returns
+    -------
+    None
+    """
     # write petsc cfg for parallel solve
-    petsc_db_file = os.path.join(ws, ".petscrc")
+    petsc_db_file = os.path.join(workspace, ".petscrc")
     with open(petsc_db_file, "w") as petsc_file:
+        petsc_file.write(f"-ksp_type {ksp_type}\n")
         if use_gamg:
-            petsc_file.write("-ksp_type bcgs\n")
             petsc_file.write("-pc_type gamg\n")
         else:
-            petsc_file.write("-ksp_type bcgs\n")
             petsc_file.write("-pc_type bjacobi\n")
             petsc_file.write("-sub_pc_type ilu\n")
             petsc_file.write("-sub_pc_factor_levels 2\n")
@@ -274,7 +322,26 @@ def write_petscdb(ws, use_gamg=False):
     return
 
 
-def _build_nproc(nrow_blocks, ncol_blocks):
+def _build_nproc(
+    nrow_blocks: int,
+    ncol_blocks: int,
+) -> int:
+    """
+    Determine the number of processors to use for the simulation.
+
+    Parameters
+    ----------
+    nrow_blocks: int
+        Number of models in the row direction of a domain.
+    ncol_blocks: int
+        Number of models in the column direction of a domain.
+
+    Returns
+    -------
+    nproc: int
+        number of processors
+
+    """
     if nrow_blocks * ncol_blocks == 0:
         nproc = max(nrow_blocks, ncol_blocks)
     else:
@@ -282,60 +349,148 @@ def _build_nproc(nrow_blocks, ncol_blocks):
     return nproc
 
 
-def _build_workspace(nrow_blocks, ncol_blocks):
-    nproc = _build_nproc(nrow_blocks, ncol_blocks)
-    if nrow_blocks * ncol_blocks == 0:
-        parallel_ws = parallel_ws = pl.Path(
-            f"../examples/ex-basin/basin_metis_{nproc}p"
-        )
-    else:
-        parallel_ws = pl.Path(
-            f"../examples/ex-basin/basin_{nrow_blocks}x{ncol_blocks}_{nproc}p"
-        )
-    return parallel_ws
+def _build_workspace(
+    nrow_blocks: int,
+    ncol_blocks: int,
+) -> os.PathLike:
+    """
 
-def run_simulation():
+    Parameters
+    ----------
+    nrow_blocks: int
+        Number of models in the row direction of a domain.
+    ncol_blocks: int
+        Number of models in the column direction of a domain.
+
+    Returns
+    -------
+    workspace: PathLike
+        Path to simulation workspace
+
+    """
+    nproc = _build_nproc(nrow_blocks, ncol_blocks)
+    base_path = "../examples/ex-basin/basin_"
+    if nrow_blocks * ncol_blocks == 0:
+        workspace = f"{base_path}metis_{nproc}p"
+    else:
+        workspace = f"{base_path}{nrow_blocks}x{ncol_blocks}_{nproc}p"
+    return pl.Path(workspace)
+
+
+def local_simulation() -> bool:
+    """
+    Determine if a local simulation based on environment variables
+    that should only be available on a HPC system.
+
+    Returns
+    -------
+    local_simulation: bool
+        Boolean indicating if running locally
+
+    """
     SLURM_JOB_NAME = os.environ.get("SLURM_JOB_NAME")
     if SLURM_JOB_NAME is None:
-        run = True
+        local_simulation = True
     else:
-        run = False   
-    return run
+        local_simulation = False
+    return local_simulation
 
-def set_parallel_data(nrow_blocks, ncol_blocks):
+
+def set_parallel_data(
+    nrow_blocks: int,
+    ncol_blocks: int,
+) -> Tuple[bool, int, os.PathLike, bool]:
+    """
+
+    Parameters
+    ----------
+    nrow_blocks: int
+        Number of models in the row direction of a domain.
+    ncol_blocks: int
+        Number of models in the column direction of a domain.
+
+    Returns
+    -------
+    use_metis: bool
+        boolean indicating if metis will be used by model splitter
+    nproc: int
+        number of processors
+    workspace: PathLike
+        path to unique simulation workspace based on whether metis is
+        used and the maximum number of processors that will be used
+    local_simulation: bool
+
+
+
+    """
     # trap potential errors
     if nrow_blocks == 0 and ncol_blocks == 0:
         raise ValueError("nrow_blocks or ncol_blocks must be greater than 0")
 
     # derive a few variables from parallel settings above
     nproc = _build_nproc(nrow_blocks, ncol_blocks)
-    parallel_ws = _build_workspace(nrow_blocks, ncol_blocks)
-    if "metis" in str(parallel_ws):
+    workspace = _build_workspace(nrow_blocks, ncol_blocks)
+    if "metis" in str(workspace):
         use_metis = True
     else:
         use_metis = False
-        
-    return use_metis, nproc, parallel_ws, run_simulation()
+
+    return use_metis, nproc, workspace, local_simulation()
 
 
-def get_parallel_data(nrow_blocks, ncol_blocks):
-    parallel_ws = _build_workspace(nrow_blocks, ncol_blocks)
-    if not parallel_ws.is_dir():
-        raise FileNotFoundError(f"{str(parallel_ws)} does not exist")
-    return parallel_ws
-
-
-def simple_mapping(nrow_blocks, ncol_blocks, modelgrid):
+def get_parallel_data(nrow_blocks: int, ncol_blocks: int) -> os.PathLike:
     """
-    Create a simple mapping array for a structured grid
+    Determine the unique workspace for simulation files created by the model
+    splitter based on the number of models in the row and column directions.
+    An exception is raised if the the workspace does not exist.
 
+    Parameters
+    ----------
+    nrow_blocks: int
+        Number of models in the row direction of a domain.
+    ncol_blocks: int
+        Number of models in the column direction of a domain.
+
+    Returns
+    -------
+    workspace: PathLike
+        path to unique simulation workspace based on whether metis is
+        used and the maximum number of processors that will be used
+
+    """
+    workspace = _build_workspace(nrow_blocks, ncol_blocks)
+    if not workspace.is_dir():
+        raise FileNotFoundError(f"{str(workspace)} does not exist")
+    return workspace
+
+
+def simple_mapping(
+    nrow_blocks: int,
+    ncol_blocks: int,
+    modelgrid: flopy.discretization.StructuredGrid,
+) -> np.ndarray:
+    """
+    Create a simple block-based mapping array for a structured grid
+
+    Parameters
+    ----------
+    nrow_blocks: int
+        Number of models in the row direction of a domain.
+    ncol_blocks: int
+        Number of models in the column direction of a domain.
+    modelgrid: flopy.discretization.StructuredGrid
+        flopy modelgrid object
+
+    Returns
+    -------
+    mask: np.ndarray
+        block-based mapping array for the model splitter
 
     """
     if modelgrid.grid_type != "structured":
         raise ValueError(
-            f"modelgrid must be 'structured' not {gwf.modelgrid.grid_type}"
+            f"modelgrid must be 'structured' not {modelgrid.grid_type}"
         )
-    nproc = nrow_blocks * ncol_blocks
     nrow, ncol = modelgrid.nrow, modelgrid.ncol
     row_inc, col_inc = int(nrow / nrow_blocks), int(ncol / ncol_blocks)
 
@@ -372,3 +527,165 @@ def simple_mapping(nrow_blocks, ncol_blocks, modelgrid):
             ival += 1
 
     return mask
+
+
+def intersect_segments(
+    modelgrid: Union[
+        flopy.discretization.StructuredGrid, flopy.discretization.VertexGrid
+    ],
+    segments: List[List[tuple]],
+) -> Tuple[flopy.utils.GridIntersect, list, list]:
+    """
+
+    Parameters
+    ----------
+    modelgrid: flopy.discretization.StructuredGrid
+        flopy modelgrid object
+    segments: list of list of tuples
+        List of segment x,y tuples
+
+    Returns
+    -------
+    ixs: flopy.utils.GridIntersect
+        flopy GridIntersect object
+    cellids: list
+        list of intersected cellids
+    lengths: list
+        list of intersected lengths
+
+    """
+    ixs = flopy.utils.GridIntersect(
+        modelgrid,
+        method=modelgrid.grid_type,
+    )
+    cellids = []
+    lengths = []
+    for sg in segments:
+        v = ixs.intersect(LineString(sg), sort_by_cellid=True)
+        cellids += v["cellids"].tolist()
+        lengths += v["lengths"].tolist()
+    return ixs, cellids, lengths
+
+
+def cell_areas(
+    modelgrid: Union[
+        flopy.discretization.StructuredGrid, flopy.discretization.VertexGrid
+    ]
+) -> np.ndarray:
+    """
+    Calculate cell areas
+
+    Parameters
+    ----------
+    modelgrid: flopy.discretization.StructuredGrid
+        flopy modelgrid object
+
+    Returns
+    -------
+    areas: numpy.ndarray
+        cell areas
+
+    """
+    if modelgrid.grid_type == "structured":
+        nrow, ncol = modelgrid.nrow, modelgrid.ncol
+        areas = np.zeros((nrow, ncol), dtype=float)
+        for r in range(nrow):
+            for c in range(ncol):
+                cellid = (r, c)
+                vertices = np.array(modelgrid.get_cell_vertices(cellid))
+                area = Polygon(vertices).area
+                areas[cellid] = area
+    elif modelgrid.grid_type == "vertex":
+        areas = np.zeros(modelgrid.ncpl, dtype=float)
+        for idx in range(modelgrid.ncpl):
+            vertices = np.array(modelgrid.get_cell_vertices(idx))
+            area = Polygon(vertices).area
+            areas[idx] = area
+    else:
+        raise ValueError(
+            "modelgrid must be 'structured' or 'vertex' not "
+            + f"{modelgrid.grid_type}"
+        )
+    return areas
+
+
+def build_drain_data(
+    modelgrid: Union[
+        flopy.discretization.StructuredGrid, flopy.discretization.VertexGrid
+    ],
+    cellids: list,
+    lengths: list,
+    leakance: float,
+    elevation: np.ndarray,
+) -> List[tuple]:
+    """
+    Build drain package data represent river segments
+
+    Parameters
+    ----------
+    modelgrid: flopy.discretization.StructuredGrid
+        flopy modelgrid object
+    cellids: list
+        list of intersected cellids
+    lengths: list
+        list of intersected lengths
+    leakance: float
+        drainage leakance value
+    elevation: numpy.ndarray
+        land surface elevation
+
+    Returns
+    -------
+    drn_data: list of tuples
+        Drain package data for stream segments
+
+    """
+    drn_data = []
+    for cellid, length in zip(cellids, lengths):
+        x = modelgrid.xcellcenters[cellid]
+        width = 5.0 + (14.0 / Lx) * (Lx - x)
+        conductance = leakance * length * width
+        drn_data.append((0, *cellid, elevation[cellid], conductance))
+    return drn_data
+
+
+def build_groundwater_discharge_data(
+    modelgrid: Union[
+        flopy.discretization.StructuredGrid, flopy.discretization.VertexGrid
+    ],
+    leakance: float,
+    elevation: np.ndarray,
+) -> List[tuple]:
+    """
+    Build drain package data represent river segments
+
+    Parameters
+    ----------
+    modelgrid: flopy.discretization.StructuredGrid
+        flopy modelgrid object
+    leakance: float
+        drainage leakance value
+    elevation: numpy.ndarray
+        land surface elevation
+
+    Returns
+    -------
+    drn_data: list of tuples
+        Drain package data for stream segments
+    """
+    areas = cell_areas(modelgrid)
+    drn_data = []
+    idomain = modelgrid.idomain[0]
+    for idx in range(modelgrid.ncpl):
+        if modelgrid.grid_type == "structured":
+            r, c = modelgrid.get_lrc(idx)[0][1:]
+            cellid = (r, c)
+        else:
+            cellid = idx
+        area = areas[cellid]
+        if idomain[cellid] == 1:
+            conductance = leakance * area
+            drn_data.append(
+                (0, *cellid, elevation[cellid] - 0.5, conductance, 1.0)
+            )
+    return drn_data
