@@ -665,6 +665,8 @@ def build_drain_data(
         x = modelgrid.xcellcenters[cellid]
         width = 5.0 + (14.0 / Lx) * (Lx - x)
         conductance = leakance * length * width
+        if not isinstance(cellid, tuple):
+            cellid = (cellid,)
         drn_data.append((0, *cellid, elevation[cellid], conductance))
     return drn_data
 
@@ -705,6 +707,8 @@ def build_groundwater_discharge_data(
         area = areas[cellid]
         if idomain[cellid] == 1:
             conductance = leakance * area
+            if not isinstance(cellid, tuple):
+                cellid = (cellid,)
             drn_data.append(
                 (0, *cellid, elevation[cellid] - 0.5, conductance, 1.0)
             )
