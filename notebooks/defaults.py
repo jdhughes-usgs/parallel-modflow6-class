@@ -1,6 +1,6 @@
 import os
-import re
 import pathlib as pl
+import re
 from typing import List, Tuple, Union
 
 import flopy
@@ -309,6 +309,7 @@ def write_petscdb(
     None
     """
     # write petsc cfg for parallel solve
+    print(f"Writing '.petscrc' file to '{str(workspace)}'.")
     petsc_db_file = os.path.join(workspace, ".petscrc")
     with open(petsc_db_file, "w") as petsc_file:
         petsc_file.write(f"-ksp_type {ksp_type}\n")
@@ -746,7 +747,9 @@ def build_groundwater_discharge_data(
     return drn_data
 
 
-def get_available_workspaces(metis: bool = False, voronoi: bool = False) -> List[os.PathLike]:
+def get_available_workspaces(
+    metis: bool = False, voronoi: bool = False
+) -> List[os.PathLike]:
     """
     Get a list of available workspaces.
 
@@ -780,9 +783,12 @@ def get_available_workspaces(metis: bool = False, voronoi: bool = False) -> List
         dir_paths.append(base_ws.parent / dir_path.name)
     return [base_ws] + sorted(dir_paths)
 
-def get_simulation_processors(metis: bool = False, voronoi: bool = False) -> List[int]:
+
+def get_simulation_processors(
+    metis: bool = False, voronoi: bool = False
+) -> List[int]:
     """
-    Get a list of available workspaces.
+    Get a processor combinations from the list of available workspaces.
 
     Parameters
     ----------
@@ -886,6 +892,56 @@ class SimulationData:
             return times_sec / 60.0
         elif units == "hours":
             return times_sec / 60.0 / 60.0
+
+    def get_formulate_time(self) -> float:
+        """
+        Get the formulate time for the solution from the list file.
+
+        Returns
+        -------
+        out : float
+            Floating point value with the formulate time,
+
+        """
+        # rewind the file
+        self.f.seek(0)
+
+        try:
+            seekpoint = self._seek_to_string("Total formulate time:")
+        except:
+            print(
+                "'Total formulate time' not included in list file. "
+                + "Returning NaN"
+            )
+            return np.nan
+
+        self.f.seek(seekpoint)
+        return float(self.f.readline().split()[3])
+
+    def get_solution_time(self) -> float:
+        """
+        Get the solution time for the solution from the list file.
+
+        Returns
+        -------
+        out : float
+            Floating point value with the solution time,
+
+        """
+        # rewind the file
+        self.f.seek(0)
+
+        try:
+            seekpoint = self._seek_to_string("Total solution time:")
+        except:
+            print(
+                "'Total solution time' not included in list file. "
+                + "Returning NaN"
+            )
+            return np.nan
+
+        self.f.seek(seekpoint)
+        return float(self.f.readline().split()[3])
 
     def get_total_iterations(self):
         """
