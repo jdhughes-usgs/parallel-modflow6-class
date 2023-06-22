@@ -747,6 +747,81 @@ def build_groundwater_discharge_data(
     return drn_data
 
 
+def get_model_cell_count(
+    model: Union[
+        flopy.mf6.ModflowGwf,
+        flopy.mf6.ModflowGwt,
+    ],
+) -> Tuple[int, int]:
+    """
+    Get the total number of cells and number of active cells in a model.
+
+    Parameters
+    ----------
+    model: flopy.mf6.ModflowGwf, flopy.mf6.ModflowGwt
+        flopy mf6 model object
+
+    Returns
+    -------
+    ncells: int
+        Total number of cells in a model
+    nactive: int
+        Total number of active cells in a model
+    """
+    modelgrid = model.modelgrid
+    if modelgrid.grid_type == "structured":
+        nlay, nrow, ncol = modelgrid.nlay, modelgrid.nrow, modelgrid.ncol
+        ncells = nlay * nrow * ncol
+        idomain = modelgrid.idomain
+        if idomain is None:
+            nactive = nlay * nrow * ncol
+        else:
+            nactive = np.count_nonzero(idomain == 1)
+    elif modelgrid.grid_type == "vertex":
+        nlay, ncpl = modelgrid.nlay, modelgrid.ncpl
+        ncells = nlay * ncpl
+        idomain = modelgrid.idomain
+        if idomain is None:
+            nactive = nlay * ncpl
+        else:
+            nactive = np.count_nonzero(idomain == 1)
+    else:
+        raise ValueError(
+            f"modelgrid grid type '{modelgrid.grid_type}' not supported"
+        )
+
+    return ncells, nactive
+
+
+def get_simulation_cell_count(
+    simulation: flopy.mf6.MFSimulation,
+) -> Tuple[int, int]:
+    """
+    Get the total number of cells and number of active cells in a simulation.
+
+    Parameters
+    ----------
+    simulation: flopy.mf6.MFSimulation
+        flopy mf6 simulation object
+
+    Returns
+    -------
+    ncells: int
+        Total number of cells in a simulation
+    nactive: int
+        Total number of active cells in a simulation
+    """
+    ncells = 0
+    nactive = 0
+    for model_name in simulation.model_names:
+        model = simulation.get_model(model_name)
+        i, j = get_model_cell_count(model)
+        ncells += i
+        nactive += j
+
+    return ncells, nactive
+
+
 def get_available_workspaces(
     metis: bool = False, voronoi: bool = False
 ) -> List[os.PathLike]:
@@ -971,6 +1046,57 @@ class SimulationData:
             total_iterations += int(line.split()[0])
 
         return total_iterations
+
+    def get_memory_usage(self):
+        """
+        Get the simulation memory usage from the simulation list file.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        memory_usage : float
+            Total memory usage for a simulation (in Gigabytes)
+
+        """
+        # initialize total_iterations
+        memory_usage = 0.0
+
+        # rewind the file
+        self.f.seek(0)
+
+        tags = (
+            "MEMORY MANAGER TOTAL STORAGE BY DATA TYPE",
+            "Total",
+        )
+
+        while True:
+            seekpoint = self._seek_to_string(tags[0])
+            self.f.seek(seekpoint)
+            line = self.f.readline()
+            if line == "":
+                break
+            units = line.split()[-1]
+            if units == "GIGABYTES":
+                conversion = 1.0
+            elif units == "MEGABYTES":
+                conversion = 1e-3
+            elif units == "KILOBYTES":
+                conversion = 1e-6
+            elif units == "BYTES":
+                conversion = 1e-9
+            else:
+                raise ValueError(f"Unknown memory unit '{units}'")
+
+            seekpoint = self._seek_to_string(tags[1])
+            self.f.seek(seekpoint)
+            line = self.f.readline()
+            if line == "":
+                break
+            memory_usage = float(line.split()[-1]) * conversion
+
+        return memory_usage
 
     def _seek_to_string(self, s):
         """
