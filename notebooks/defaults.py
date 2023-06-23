@@ -321,6 +321,7 @@ def write_petscdb(
             petsc_file.write("-sub_pc_factor_levels 2\n")
         petsc_file.write("-dvclose 1.0e-6\n")
         petsc_file.write("-options_left no\n")
+
     return
 
 
