@@ -173,6 +173,7 @@ cython_debug/
 examples/ex-basin/
 notebooks/temp/
 figures/
+performance/
 
 
 

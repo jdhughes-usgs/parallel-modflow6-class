@@ -1,6 +1,5 @@
 import os
 import pathlib as pl
-import re
 from typing import List, Tuple, Union
 
 import flopy
@@ -478,6 +477,42 @@ def get_base_workspace(voronoi: bool = False) -> os.PathLike:
 
     return pl.Path(base_workspace)
 
+def get_available_workspaces(
+    metis: bool = False, voronoi: bool = False
+) -> List[os.PathLike]:
+    """
+    Get a list of available workspaces.
+
+    Parameters
+    ----------
+    metis : bool
+        Boolean that indicates if searching for metis simulations. metis can
+        not be True if voronoi is True. (Default is False)
+    voronoi: bool
+        Boolean that indicates if searching for voronoi grid simulations.
+        voronoi can not be True is metis is True. (Default is False)
+
+    Returns
+    -------
+    workspaces: list of PathLike objects
+        Available workspaces
+
+    """
+    if metis and voronoi:
+        raise ValueError("metis and voronoi cannot both be set to True")
+    base_ws = get_base_workspace(voronoi=voronoi)
+    if voronoi:
+        tag = "_voronoi_*p"
+    elif metis:
+        tag = "_metis_*p"
+    else:
+        tag = "_*x*p"
+    pattern = f"basin{tag}"
+    dir_paths = []
+    for dir_path in base_ws.parent.glob(pattern):
+        dir_paths.append(base_ws.parent / dir_path.name)
+    return [base_ws] + sorted(dir_paths)
+
 
 def get_workspaces(
     nrow_blocks: int,
@@ -821,303 +856,3 @@ def get_simulation_cell_count(
         nactive += j
 
     return ncells, nactive
-
-
-def get_available_workspaces(
-    metis: bool = False, voronoi: bool = False
-) -> List[os.PathLike]:
-    """
-    Get a list of available workspaces.
-
-    Parameters
-    ----------
-    metis : bool
-        Boolean that indicates if searching for metis simulations. metis can
-        not be True if voronoi is True. (Default is False)
-    voronoi: bool
-        Boolean that indicates if searching for voronoi grid simulations.
-        voronoi can not be True is metis is True. (Default is False)
-
-    Returns
-    -------
-    workspaces: list of PathLike objects
-        Available workspaces
-
-    """
-    if metis and voronoi:
-        raise ValueError("metis and voronoi cannot both be set to True")
-    base_ws = get_base_workspace(voronoi=voronoi)
-    if voronoi:
-        tag = "_voronoi_*p"
-    elif metis:
-        tag = "_metis_*p"
-    else:
-        tag = "_*x*p"
-    pattern = f"basin{tag}"
-    dir_paths = []
-    for dir_path in base_ws.parent.glob(pattern):
-        dir_paths.append(base_ws.parent / dir_path.name)
-    return [base_ws] + sorted(dir_paths)
-
-
-def get_simulation_processors(
-    metis: bool = False, voronoi: bool = False
-) -> List[int]:
-    """
-    Get a processor combinations from the list of available workspaces.
-
-    Parameters
-    ----------
-    metis : bool
-        Boolean that indicates if searching for metis simulations. metis can
-        not be True if voronoi is True. (Default is False)
-    voronoi: bool
-        Boolean that indicates if searching for voronoi grid simulations.
-        voronoi can not be True is metis is True. (Default is False)
-
-    Returns
-    -------
-    processors: list of ints
-        Available processor simulations
-
-    """
-    workspaces = get_available_workspaces(metis=metis, voronoi=voronoi)
-    processors = [int(workspace.name[-4:-1]) for workspace in workspaces[1:]]
-    return [1] + processors
-
-
-def get_simulation_listfiles(path: os.PathLike) -> list:
-    """
-    Get all simulation list files in a path
-
-    Parameters
-    ----------
-    path: PathLike
-        path to simulation data
-
-    Returns
-    -------
-    list_files: list
-        list containing all listing files matching mfsim*.lst pattern
-
-    """
-    list_files = []
-    for file in path.glob("mfsim*.lst"):
-        list_files.append(path / file.name)
-    return list_files
-
-
-class SimulationData:
-    def __init__(self, file_name: os.PathLike):
-        # Set up file reading
-        assert os.path.exists(file_name), f"file_name {file_name} not found"
-        self.file_name = file_name
-        self.f = open(file_name, "r", encoding="ascii", errors="replace")
-
-    def get_model_runtime(self, units: str = "seconds") -> float:
-        """
-        Get the elapsed runtime of the model from the list file.
-
-        Parameters
-        ----------
-        units : str
-            Units in which to return the runtime. Acceptable values are
-            'seconds', 'minutes', 'hours' (default is 'seconds')
-
-        Returns
-        -------
-        out : float
-            Floating point value with the runtime in requested units. Returns
-            NaN if runtime not found in list file
-
-        """
-        # rewind the file
-        self.f.seek(0)
-
-        units = units.lower()
-        if (
-            not units == "seconds"
-            and not units == "minutes"
-            and not units == "hours"
-        ):
-            raise AssertionError(
-                '"units" input variable must be "minutes", "hours", '
-                f'or "seconds": {units} was specified'
-            )
-        try:
-            seekpoint = self._seek_to_string("Elapsed run time:")
-        except:
-            print("Elapsed run time not included in list file. Returning NaN")
-            return np.nan
-
-        self.f.seek(seekpoint)
-        line = self.f.readline()
-
-        # yank out the floating point values from the Elapsed run time string
-        times = list(map(float, re.findall(r"[+-]?[0-9.]+", line)))
-        # pad an array with zeros and times with
-        # [days, hours, minutes, seconds]
-        times = np.array([0 for _ in range(4 - len(times))] + times)
-        # convert all to seconds
-        time2sec = np.array([24 * 60 * 60, 60 * 60, 60, 1])
-        times_sec = np.sum(times * time2sec)
-        # return in the requested units
-        if units == "seconds":
-            return times_sec
-        elif units == "minutes":
-            return times_sec / 60.0
-        elif units == "hours":
-            return times_sec / 60.0 / 60.0
-
-    def get_formulate_time(self) -> float:
-        """
-        Get the formulate time for the solution from the list file.
-
-        Returns
-        -------
-        out : float
-            Floating point value with the formulate time,
-
-        """
-        # rewind the file
-        self.f.seek(0)
-
-        try:
-            seekpoint = self._seek_to_string("Total formulate time:")
-        except:
-            print(
-                "'Total formulate time' not included in list file. "
-                + "Returning NaN"
-            )
-            return np.nan
-
-        self.f.seek(seekpoint)
-        return float(self.f.readline().split()[3])
-
-    def get_solution_time(self) -> float:
-        """
-        Get the solution time for the solution from the list file.
-
-        Returns
-        -------
-        out : float
-            Floating point value with the solution time,
-
-        """
-        # rewind the file
-        self.f.seek(0)
-
-        try:
-            seekpoint = self._seek_to_string("Total solution time:")
-        except:
-            print(
-                "'Total solution time' not included in list file. "
-                + "Returning NaN"
-            )
-            return np.nan
-
-        self.f.seek(seekpoint)
-        return float(self.f.readline().split()[3])
-
-    def get_total_iterations(self):
-        """
-        Get the total number of iterations from the list file.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        total_iterations : float
-            Sum of all TOTAL ITERATIONS found in the list file
-
-        """
-        # initialize total_iterations
-        total_iterations = 0
-
-        # rewind the file
-        self.f.seek(0)
-
-        while True:
-            seekpoint = self._seek_to_string("TOTAL ITERATIONS")
-            self.f.seek(seekpoint)
-            line = self.f.readline()
-            if line == "":
-                break
-            total_iterations += int(line.split()[0])
-
-        return total_iterations
-
-    def get_memory_usage(self):
-        """
-        Get the simulation memory usage from the simulation list file.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        memory_usage : float
-            Total memory usage for a simulation (in Gigabytes)
-
-        """
-        # initialize total_iterations
-        memory_usage = 0.0
-
-        # rewind the file
-        self.f.seek(0)
-
-        tags = (
-            "MEMORY MANAGER TOTAL STORAGE BY DATA TYPE",
-            "Total",
-        )
-
-        while True:
-            seekpoint = self._seek_to_string(tags[0])
-            self.f.seek(seekpoint)
-            line = self.f.readline()
-            if line == "":
-                break
-            units = line.split()[-1]
-            if units == "GIGABYTES":
-                conversion = 1.0
-            elif units == "MEGABYTES":
-                conversion = 1e-3
-            elif units == "KILOBYTES":
-                conversion = 1e-6
-            elif units == "BYTES":
-                conversion = 1e-9
-            else:
-                raise ValueError(f"Unknown memory unit '{units}'")
-
-            seekpoint = self._seek_to_string(tags[1])
-            self.f.seek(seekpoint)
-            line = self.f.readline()
-            if line == "":
-                break
-            memory_usage = float(line.split()[-1]) * conversion
-
-        return memory_usage
-
-    def _seek_to_string(self, s):
-        """
-        Parameters
-        ----------
-        s : str
-            Seek through the file to the next occurrence of s.  Return the
-            seek location when found.
-
-        Returns
-        -------
-        seekpoint : int
-            Next location of the string
-
-        """
-        while True:
-            seekpoint = self.f.tell()
-            line = self.f.readline()
-            if line == "":
-                break
-            if s in line:
-                break
-        return seekpoint
