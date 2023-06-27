@@ -1,0 +1,13 @@
+name: mf6pro
+
+channels:
+  - conda-forge
+
+dependencies:
+  - pkg-config
+  - openmpi
+  - gcc
+  - gfortran
+  - petsc
+  - meson>=1.1.0
+  - ninja

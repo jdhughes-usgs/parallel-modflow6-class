@@ -1,6 +1,8 @@
-name: parallel_modflow
+name: mf6pro
+
 channels:
   - conda-forge
+
 dependencies:
   # required
   - python>=3.8
