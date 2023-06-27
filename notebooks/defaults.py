@@ -477,6 +477,7 @@ def get_base_workspace(voronoi: bool = False) -> os.PathLike:
 
     return pl.Path(base_workspace)
 
+
 def get_available_workspaces(
     metis: bool = False, voronoi: bool = False
 ) -> List[os.PathLike]:

@@ -144,6 +144,35 @@ class SimulationData:
         self.f.seek(seekpoint)
         return float(self.f.readline().split()[3])
 
+    def get_outer_iterations(self):
+        """
+        Get the total outer iterations from the list file.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        outer_iterations : float
+            Sum of all TOTAL ITERATIONS found in the list file
+
+        """
+        # initialize total_iterations
+        outer_iterations = 0
+
+        # rewind the file
+        self.f.seek(0)
+
+        while True:
+            seekpoint = self._seek_to_string("CALLS TO NUMERICAL SOLUTION IN")
+            self.f.seek(seekpoint)
+            line = self.f.readline()
+            if line == "":
+                break
+            outer_iterations += int(line.split()[0])
+
+        return outer_iterations
+
     def get_total_iterations(self):
         """
         Get the total number of iterations from the list file.
@@ -274,8 +303,6 @@ def get_simulation_processors(
     return [1] + processors
 
 
-
-
 def get_simulation_listfiles(path: os.PathLike) -> list:
     """
     Get all simulation list files in a path
@@ -300,7 +327,9 @@ def get_simulation_listfiles(path: os.PathLike) -> list:
     return list_files
 
 
-def get_available_json_files(path: os.PathLike = "performance") -> List[os.PathLike]:
+def get_available_json_files(
+    path: os.PathLike = "performance",
+) -> List[os.PathLike]:
     """
     Get a list of available json files
     Parameters
@@ -320,6 +349,7 @@ def get_available_json_files(path: os.PathLike = "performance") -> List[os.PathL
     for file in path.glob("*.json"):
         json_paths.append(path / file.name)
     return json_paths
+
 
 def list_available_json_files(path: os.PathLike = "performance") -> None:
     """
