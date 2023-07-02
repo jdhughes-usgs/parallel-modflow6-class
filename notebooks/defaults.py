@@ -15,12 +15,6 @@ extent = (0, Lx, 0, Ly)
 levels = np.arange(10, 110, 10)
 vmin, vmax = 0.0, 100.0
 
-# plotting information
-figwidth = 180  # 90 # mm
-figwidth = figwidth / 10 / 2.54  # inches
-figheight = figwidth
-figsize = (figwidth, figheight)
-
 # Geometry data
 # vertices defining basin boundary and river segments
 geometry = {
@@ -352,7 +346,7 @@ def _build_nproc(
 
 
 def _build_workspace(
-    nrow_blocks: int, ncol_blocks: int, voronoi: bool
+    nrow_blocks: int, ncol_blocks: int, simulation_type: str
 ) -> os.PathLike:
     """
 
@@ -362,9 +356,9 @@ def _build_workspace(
         Number of models in the row direction of a domain.
     ncol_blocks: int
         Number of models in the column direction of a domain.
-    voronoi: bool
-        Boolean that determines if it is a voronoi grid is being used.
-        (Default is False)
+    simulation_type: str
+        name of simulation. Must be "basin_structured", "basin_unstructured",
+        or "box_structured". (Default is "basin_structured")
 
 
     Returns
@@ -373,21 +367,19 @@ def _build_workspace(
         Path to simulation workspace
 
     """
-    if voronoi:
+    if "unstructured" in simulation_type:
         if nrow_blocks > 0 and ncol_blocks > 0:
             raise ValueError(
-                "For voronoi grids nrow_blocks or ncol_blocks "
+                "For unstructured grids nrow_blocks or ncol_blocks "
                 + "must be greater than 0"
             )
     nproc = _build_nproc(nrow_blocks, ncol_blocks)
-    workspace = "../examples/ex-basin/basin_"
-    if nrow_blocks * ncol_blocks == 0:
-        if voronoi:
-            workspace = f"{workspace}voronoi"
-        else:
+    workspace = f"../examples/ex-basin/{simulation_type}_"
+    if "unstructured" not in simulation_type:
+        if nrow_blocks * ncol_blocks == 0:
             workspace = f"{workspace}metis"
-    else:
-        workspace = f"{workspace}{nrow_blocks}x{ncol_blocks}"
+        else:
+            workspace = f"{workspace}{nrow_blocks}x{ncol_blocks}"
     return pl.Path(f"{workspace}_{nproc:03d}p")
 
 
@@ -413,7 +405,7 @@ def local_simulation() -> bool:
 def set_parallel_data(
     nrow_blocks: int,
     ncol_blocks: int,
-    voronoi: bool = False,
+    simulation_type: str = "basin_structured",
 ) -> Tuple[bool, int, os.PathLike]:
     """
 
@@ -423,9 +415,9 @@ def set_parallel_data(
         Number of models in the row direction of a domain.
     ncol_blocks: int
         Number of models in the column direction of a domain.
-    voronoi: bool
-        Boolean that determines if it is a voronoi grid is being used.
-        (Default is False)
+    simulation_type: str
+        name of simulation. Must be "basin_structured", "basin_unstructured",
+        or "box_structured". (Default is "basin_structured")
 
 
     Returns
@@ -445,24 +437,36 @@ def set_parallel_data(
 
     # derive a few variables from parallel settings above
     nproc = _build_nproc(nrow_blocks, ncol_blocks)
-    workspace = _build_workspace(nrow_blocks, ncol_blocks, voronoi)
-    if "metis" in str(workspace) or "voronoi" in str(workspace):
-        use_metis = True
-    else:
+    workspace = _build_workspace(nrow_blocks, ncol_blocks, simulation_type)
+    if nrow_blocks * ncol_blocks > 0:
         use_metis = False
+    else:
+        use_metis = True
 
     return use_metis, nproc, workspace
 
 
-def get_base_workspace(voronoi: bool = False) -> os.PathLike:
+def get_valid_simulations() -> Tuple[str, str, str]:
+    return "basin_structured", "basin_unstructured", "box_structured"
+
+
+def list_valid_simulations() -> None:
+    for idx, simulation in enumerate(get_valid_simulations()):
+        print(f"{idx}: '{simulation}'")
+    return
+
+
+def get_base_workspace(
+    simulation_type: str = "basin_structured",
+) -> os.PathLike:
     """
     Get the base workspace for a simulation.
 
     Parameters
     ----------
-    voronoi: bool
-        Boolean that determines if it is a voronoi grid is being used.
-        (Default is False)
+    simulation_type: str
+        name of simulation. Must be "basin_structured", "basin_unstructured",
+        or "box_structured". (Default is "basin_structured")
 
     Returns
     -------
@@ -470,16 +474,18 @@ def get_base_workspace(voronoi: bool = False) -> os.PathLike:
         path to unique workspace for the base model simulation.
 
     """
-    if voronoi:
-        base_workspace = "../examples/ex-basin/basin_base_voronoi"
-    else:
-        base_workspace = "../examples/ex-basin/basin_base"
+    if simulation_type not in get_valid_simulations():
+        raise ValueError(
+            f"simulation_type = '{simulation_type}'. "
+            + "Valid types are "
+            + ", ".join(f"{value}" for value in get_valid_simulations())
+        )
 
-    return pl.Path(base_workspace)
+    return pl.Path(f"../examples/ex-basin/{simulation_type}_001p")
 
 
 def get_available_workspaces(
-    metis: bool = False, voronoi: bool = False
+    metis: bool = False, simulation_type: str = "basin_structured"
 ) -> List[os.PathLike]:
     """
     Get a list of available workspaces.
@@ -488,10 +494,10 @@ def get_available_workspaces(
     ----------
     metis : bool
         Boolean that indicates if searching for metis simulations. metis can
-        not be True if voronoi is True. (Default is False)
-    voronoi: bool
-        Boolean that indicates if searching for voronoi grid simulations.
-        voronoi can not be True is metis is True. (Default is False)
+        not be True if an unstructured simulation_type. (Default is False)
+    simulation_type: str
+        name of simulation. Must be "basin_structured", "basin_unstructured",
+        or "box_structured". (Default is "basin_structured")
 
     Returns
     -------
@@ -499,26 +505,27 @@ def get_available_workspaces(
         Available workspaces
 
     """
-    if metis and voronoi:
-        raise ValueError("metis and voronoi cannot both be set to True")
-    base_ws = get_base_workspace(voronoi=voronoi)
-    if voronoi:
-        tag = "_voronoi_*p"
-    elif metis:
+    if "unstructured" in simulation_type and metis:
+        raise ValueError(
+            "metis cannot be True for unstructured simulation types"
+        )
+
+    base_ws = get_base_workspace(simulation_type=simulation_type)
+    if metis:
         tag = "_metis_*p"
     else:
         tag = "_*x*p"
-    pattern = f"basin{tag}"
+    pattern = f"{simulation_type}{tag}"
     dir_paths = []
     for dir_path in base_ws.parent.glob(pattern):
         dir_paths.append(base_ws.parent / dir_path.name)
-    return [base_ws] + sorted(dir_paths)
+    return [base_ws] + sorted(dir_paths, key=lambda x: str(x)[-4:-1])
 
 
 def get_workspaces(
     nrow_blocks: int,
     ncol_blocks: int,
-    voronoi: bool = False,
+    simulation_type: str = "basin_structured",
 ) -> Tuple[os.PathLike, os.PathLike]:
     """
     Determine the unique workspace for simulation files created by the model
@@ -532,9 +539,9 @@ def get_workspaces(
         Number of models in the row direction of a domain.
     ncol_blocks: int
         Number of models in the column direction of a domain.
-    voronoi: bool
-        Boolean that determines if it is a voronoi grid is being used.
-        (Default is False)
+    simulation_type: str
+        name of simulation. Must be "basin_structured", "basin_unstructured",
+        or "box_structured". (Default is "basin_structured")
 
     Returns
     -------
@@ -545,8 +552,12 @@ def get_workspaces(
         used and the maximum number of processors that will be used.
 
     """
-    base_workspace = get_base_workspace(voronoi=voronoi)
-    workspace = _build_workspace(nrow_blocks, ncol_blocks, voronoi=voronoi)
+    base_workspace = get_base_workspace(simulation_type=simulation_type)
+    workspace = _build_workspace(
+        nrow_blocks,
+        ncol_blocks,
+        simulation_type=simulation_type,
+    )
     for ws in (base_workspace, workspace):
         if not ws.is_dir():
             raise FileNotFoundError(f"{str(ws)} does not exist")

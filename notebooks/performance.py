@@ -144,7 +144,7 @@ class SimulationData:
         self.f.seek(seekpoint)
         return float(self.f.readline().split()[3])
 
-    def get_outer_iterations(self):
+    def get_outer_iterations(self) -> int:
         """
         Get the total outer iterations from the list file.
 
@@ -173,7 +173,7 @@ class SimulationData:
 
         return outer_iterations
 
-    def get_total_iterations(self):
+    def get_total_iterations(self) -> int:
         """
         Get the total number of iterations from the list file.
 
@@ -202,7 +202,7 @@ class SimulationData:
 
         return total_iterations
 
-    def get_memory_usage(self):
+    def get_memory_usage(self, virtual=False) -> float:
         """
         Get the simulation memory usage from the simulation list file.
 
@@ -224,6 +224,7 @@ class SimulationData:
         tags = (
             "MEMORY MANAGER TOTAL STORAGE BY DATA TYPE",
             "Total",
+            "Virtual",
         )
 
         while True:
@@ -244,7 +245,11 @@ class SimulationData:
             else:
                 raise ValueError(f"Unknown memory unit '{units}'")
 
-            seekpoint = self._seek_to_string(tags[1])
+            if virtual:
+                tag = tags[2]
+            else:
+                tag = tags[1]
+            seekpoint = self._seek_to_string(tag)
             self.f.seek(seekpoint)
             line = self.f.readline()
             if line == "":
@@ -252,6 +257,18 @@ class SimulationData:
             memory_usage = float(line.split()[-1]) * conversion
 
         return memory_usage
+
+    def get_non_virtual_memory_usage(self):
+        """
+
+        Returns
+        -------
+        non_virtual: float
+            Non-virtual memory usage, which is the difference between the
+            total and virtual memory usage
+
+        """
+        return self.get_memory_usage() - self.get_memory_usage(virtual=True)
 
     def _seek_to_string(self, s):
         """
@@ -278,7 +295,7 @@ class SimulationData:
 
 
 def get_simulation_processors(
-    metis: bool = False, voronoi: bool = False
+    metis: bool = False, simulation_type: str = "basin_structured"
 ) -> List[int]:
     """
     Get a processor combinations from the list of available workspaces.
@@ -288,9 +305,9 @@ def get_simulation_processors(
     metis : bool
         Boolean that indicates if searching for metis simulations. metis can
         not be True if voronoi is True. (Default is False)
-    voronoi: bool
-        Boolean that indicates if searching for voronoi grid simulations.
-        voronoi can not be True is metis is True. (Default is False)
+    simulation_type: str
+        name of simulation. Must be "basin_structured", "basin_unstructured",
+        or "box_structured". (Default is "basin_structured")
 
     Returns
     -------
@@ -298,9 +315,12 @@ def get_simulation_processors(
         Available processor simulations
 
     """
-    workspaces = get_available_workspaces(metis=metis, voronoi=voronoi)
+    workspaces = get_available_workspaces(
+        metis=metis,
+        simulation_type=simulation_type,
+    )
     processors = [int(workspace.name[-4:-1]) for workspace in workspaces[1:]]
-    return [1] + processors
+    return [1] + sorted(processors)
 
 
 def get_simulation_listfiles(path: os.PathLike) -> list:
@@ -394,13 +414,14 @@ def save_performance_json(
         workspace = pl.Path(workspace)
     workspace.mkdir(parents=True, exist_ok=True)
     if filename is None:
-        text = ""
+        if "simulation_type" in performance_dict.keys():
+            filename = performance_dict["simulation_type"]
+        else:
+            filename = performance_dict["grid_type"]
         if performance_dict["metis"]:
-            text = "_metis"
-        elif performance_dict["voronoi"]:
-            text = "_voronoi"
+            filename = f"{filename}_metis"
         filename = (
-            f"{performance_dict['grid_type']}{text}_"
+            f"{filename}_"
             + f"{performance_dict['total_cells']:010d}_"
             + f"{performance_dict['active_cells']:010d}.json"
         )
