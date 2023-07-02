@@ -374,12 +374,12 @@ def _build_workspace(
                 + "must be greater than 0"
             )
     nproc = _build_nproc(nrow_blocks, ncol_blocks)
-    workspace = f"../examples/ex-basin/{simulation_type}_"
+    workspace = f"../examples/ex-basin/{simulation_type}"
     if "unstructured" not in simulation_type:
         if nrow_blocks * ncol_blocks == 0:
-            workspace = f"{workspace}metis"
+            workspace = f"{workspace}_metis"
         else:
-            workspace = f"{workspace}{nrow_blocks}x{ncol_blocks}"
+            workspace = f"{workspace}_{nrow_blocks}x{ncol_blocks}"
     return pl.Path(f"{workspace}_{nproc:03d}p")
 
 
@@ -494,32 +494,36 @@ def get_available_workspaces(
     ----------
     metis : bool
         Boolean that indicates if searching for metis simulations. metis can
-        not be True if an unstructured simulation_type. (Default is False)
+        be any value if an unstructured simulation_type. (Default is False)
     simulation_type: str
         name of simulation. Must be "basin_structured", "basin_unstructured",
         or "box_structured". (Default is "basin_structured")
 
     Returns
     -------
-    workspaces: list of PathLike objects
+    dir_paths: list of PathLike objects
         Available workspaces
 
     """
-    if "unstructured" in simulation_type and metis:
-        raise ValueError(
-            "metis cannot be True for unstructured simulation types"
-        )
+    if "unstructured" in simulation_type:
+        metis = False
 
     base_ws = get_base_workspace(simulation_type=simulation_type)
-    if metis:
-        tag = "_metis_*p"
+    if "unstructured" in simulation_type:
+        tag = "_*p"
     else:
-        tag = "_*x*p"
+        if metis:
+            tag = "_metis_*p"
+        else:
+            tag = "_*x*p"
     pattern = f"{simulation_type}{tag}"
     dir_paths = []
     for dir_path in base_ws.parent.glob(pattern):
         dir_paths.append(base_ws.parent / dir_path.name)
-    return [base_ws] + sorted(dir_paths, key=lambda x: str(x)[-4:-1])
+    dir_paths = sorted(dir_paths, key=lambda x: str(x)[-4:-1])
+    if base_ws not in dir_paths:
+        dir_paths.insert(0, base_ws)
+    return dir_paths
 
 
 def get_workspaces(
