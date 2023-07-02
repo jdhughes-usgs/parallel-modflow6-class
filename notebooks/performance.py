@@ -416,6 +416,8 @@ def save_performance_json(
     if filename is None:
         if "simulation_type" in performance_dict.keys():
             filename = performance_dict["simulation_type"]
+            if "unstructured" in performance_dict["simulation_type"]:
+                performance_dict["metis"] = False
         else:
             filename = performance_dict["grid_type"]
         if performance_dict["metis"]:

@@ -281,6 +281,7 @@ def set_structured_idomain(
 def write_petscdb(
     workspace: Union[str, os.PathLike],
     ksp_type: str = "bcgs",
+    dvclose: float = 1e-6,
     use_gamg: bool = False,
 ) -> None:
     """
@@ -293,6 +294,8 @@ def write_petscdb(
     ksp_type: str
         PETSc Krylov solver type. Possible options are cg or bcgs.
         (Default is bcgs)
+    dvclose: float
+        inner closure convergence criteria. (Default is 1e-6)
     use_gamg: bool, optional
         Boolean that determines if the PETSc Geometric Algabraic Multi-Grid
         solver should be used (Default is False)
@@ -312,7 +315,7 @@ def write_petscdb(
             petsc_file.write("-pc_type bjacobi\n")
             petsc_file.write("-sub_pc_type ilu\n")
             petsc_file.write("-sub_pc_factor_levels 2\n")
-        petsc_file.write("-dvclose 1.0e-6\n")
+        petsc_file.write(f"-dvclose {dvclose}\n")
         petsc_file.write("-options_left no\n")
 
     return
