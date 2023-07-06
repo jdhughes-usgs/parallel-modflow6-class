@@ -1,0 +1,20 @@
+#!/bin/bash
+
+#SBATCH --job-name=par_gwf01-3d
+#SBATCH --nodes=1
+#SBATCH --ntasks=2
+#SBATCH --account=impd
+#SBATCH --time=00:30:00
+#SBATCH --output=slurm-%j.out
+
+# load appropriate modules
+module switch PrgEnv-${PE_ENV,,} PrgEnv-intel
+module load cray-petsc
+export PKG_CONFIG_PATH=/opt/cray/pe/mpt/7.7.19/gni/mpich-intel/16.0/lib/pkgconfig:/opt/cray/pe/petsc/3.14.5.0/real/INTEL/19.1/x86_skylake/lib/pkgconfig:$PKG_CONFIG_PATH
+
+# define paths relative to the root directory
+MODFLOW6ROOT=/home/software/denali/contrib/impd/src/modflow6
+BINDIR=$MODFLOW6ROOT/bin
+
+# run example
+srun $BINDIR/mf6 -p
