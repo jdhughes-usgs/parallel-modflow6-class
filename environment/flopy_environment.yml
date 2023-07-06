@@ -31,6 +31,10 @@ dependencies:
   # MODFLOW API dependencies
   - bmipy
 
+  # pre-built executables from conda-forge
+  - modflow6
+  - triangle
+
   # pip installations
   - pip
   - pip:
