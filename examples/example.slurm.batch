@@ -12,10 +12,8 @@ module use --append /home/software/denali/contrib/impd/modulefiles
 module load modflow/6.4.2
 
 # define paths relative to the root directory
-MODFLOW6ROOT=/home/software/denali/contrib/impd/src/modflow6
-BINDIR=$MODFLOW6ROOT/bin
 TESTDIR=ex-basin/basin_structured_metis_002p
 
 # run example
 cd $TESTDIR
-srun $BINDIR/mf6 -p
+srun ./mf6 -p
