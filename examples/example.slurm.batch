@@ -1,21 +1,20 @@
 #!/bin/bash
 
-#SBATCH --job-name=basin_metis
+#SBATCH --job-name=b_s_2p
 #SBATCH --nodes=1
 #SBATCH --ntasks=8
-#SBATCH --account=impd
+#SBATCH --account=training
 #SBATCH --time=00:30:00
 #SBATCH --output=slurm-%j.out
 
 # load appropriate modules
-module switch PrgEnv-${PE_ENV,,} PrgEnv-intel
-module load cray-petsc
-export PKG_CONFIG_PATH=/opt/cray/pe/mpt/7.7.19/gni/mpich-intel/16.0/lib/pkgconfig:/opt/cray/pe/petsc/3.14.5.0/real/INTEL/19.1/x86_skylake/lib/pkgconfig:$PKG_CONFIG_PATH
+module use --append /home/software/denali/contrib/impd/modulefiles
+module load modflow/6.4.2
 
 # define paths relative to the root directory
 MODFLOW6ROOT=/home/software/denali/contrib/impd/src/modflow6
 BINDIR=$MODFLOW6ROOT/bin
-TESTDIR=ex-basin/basin_metis_8p
+TESTDIR=ex-basin/basin_structured_metis_002p
 
 # run example
 cd $TESTDIR
