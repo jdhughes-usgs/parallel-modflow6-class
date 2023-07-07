@@ -1,19 +1,19 @@
 #!/bin/bash
 
 #SBATCH --job-name=b_s_2p
-#SBATCH --nodes=1
-#SBATCH --ntasks=8
+#SBATCH --ntasks=2
+#SBATCH --ntasks-per-node=8
 #SBATCH --account=training
 #SBATCH --time=00:30:00
 #SBATCH --output=slurm-%j.out
 
 # load appropriate modules
 module use --append /home/software/denali/contrib/impd/modulefiles
-module load modflow/6.4.2
+module load modflow/6.4.3.dev0
 
 # define paths relative to the root directory
 TESTDIR=ex-basin/basin_structured_metis_002p
 
 # run example
 cd $TESTDIR
-srun ./mf6 -p
+srun mf6 -p

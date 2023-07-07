@@ -12,4 +12,4 @@ module use --append /home/software/denali/contrib/impd/modulefiles
 module load modflow/6.4.2
 
 # run example
-srun ./mf6 -p
+srun mf6 -p

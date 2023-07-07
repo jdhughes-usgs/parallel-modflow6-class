@@ -1,9 +1,6 @@
-# Example problems and Jupyter Notebooks for the parallel MODFLOW 6 class
+<img src="../images/supercomputer.png" alt="SWIM2016Course" style="width:50;height:20">
 
-This repository includes example problems and Jupyter Notebooks that will be used in the parallel MODFLOW class.
-
-
-### Running the examples locally
+# Running the examples locally
 
 With the parallel version of MODFLOW 6 (`mf6`) in your path, open a terminal in an example directory (for example, `par_gwf01-2d`) and run using `mpiexec`.
 
