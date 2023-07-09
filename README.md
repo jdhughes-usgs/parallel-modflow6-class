@@ -14,32 +14,32 @@ If you are using the MacOS or Linux operating system you can follow the instruct
 ## Day 1
 
 ```
-8:30 – Welcome and Introductions (30 mins)
-9:00 – Overview of MODFLOW 6 (15 mins)
-9:15 – Overview of parallel processing (15 mins)
-9:30 – FloPy for pre and post processing (30 mins)
+ 8:30 – Welcome and Introductions (30 mins)
+ 9:00 – Overview of MODFLOW 6 (15 mins)
+ 9:15 – Overview of parallel processing (15 mins)
+ 9:30 – FloPy for pre and post processing (30 mins)
 10:00 – BREAK
 10:15 – Hands-on exercise: FloPy and MODFLOW 6 (1 hr 45 mins)
 12:00 – LUNCH 
-1:00 – Hands-on exercise: multi-model coupling (1 hr 30 mins)
-2:30 -- BREAK
-2:45 – Presentation: Parallel computing with MODFLOW (60 mins)
-3:45 – Presentation/Demonstration: Getting started on USGS supercomputers (1 hr 15 mins)
-5:00 -- ADJOURN
+ 1:00 – Hands-on exercise: multi-model coupling (1 hr 30 mins)
+ 2:30 - BREAK
+ 2:45 – Presentation: Parallel computing with MODFLOW (60 mins)
+ 3:45 – Presentation/Demonstration: Getting started on USGS supercomputers (1 hr 15 mins)
+ 5:00 - ADJOURN
 ```
 
 ## Day 2
 
 ```
-8:30 – Parallel computing with MODFLOW: model partitioning and load balancing (30 mins)
-9:00 – Hands on exercise: Using FloPy to partition a model (1 hr)
+ 8:30 – Parallel computing with MODFLOW: model partitioning and load balancing (30 mins)
+ 9:00 – Hands on exercise: Using FloPy to partition a model (1 hr)
 10:00 – BREAK
 10:15 – Running parallel MODFLOW models on Denali (15 mins)
 10:30 – Hands on exercise: running parallel MODFLOW (1 hr 30 mins)
 12:00 – LUNCH 
-1:00 – Hands on exercise: evaluating parallel performance (1 hr 15 mins)
-2:15 -- BREAK
-2:30 – Hands on exercise: TBD (1 hr)
-3:30 – Discussion and Wrap up (30 mins)
-4:00 -- ADJOURN
+ 1:00 – Hands on exercise: evaluating parallel performance (1 hr 15 mins)
+ 2:15 - BREAK
+ 2:30 – Hands on exercise: TBD (1 hr)
+ 3:30 – Discussion and Wrap up (30 mins)
+ 4:00 - ADJOURN
 ```

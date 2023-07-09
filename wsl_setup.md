@@ -1,4 +1,4 @@
-<img src="./images/supercomputer.png" alt="SWIM2016Course" style="width:50;height:20">
+<img src="./images/supercomputer.png" alt="Parallel MODFLOW Course" style="width:50;height:20">
 
 # WSL and Parallel MODFLOW
 

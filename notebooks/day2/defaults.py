@@ -377,7 +377,7 @@ def _build_workspace(
                 + "must be greater than 0"
             )
     nproc = _build_nproc(nrow_blocks, ncol_blocks)
-    workspace = f"../examples/ex-basin/{simulation_type}"
+    workspace = f"../../examples/ex-basin/{simulation_type}"
     if "unstructured" not in simulation_type:
         if nrow_blocks * ncol_blocks == 0:
             workspace = f"{workspace}_metis"
@@ -484,7 +484,7 @@ def get_base_workspace(
             + ", ".join(f"{value}" for value in get_valid_simulations())
         )
 
-    return pl.Path(f"../examples/ex-basin/{simulation_type}_001p")
+    return pl.Path(f"../../examples/ex-basin/{simulation_type}_001p")
 
 
 def get_available_workspaces(

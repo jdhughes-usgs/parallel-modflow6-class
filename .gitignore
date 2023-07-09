@@ -171,7 +171,7 @@ cython_debug/
 
 # directories created by notebooks
 examples/ex-basin/
-notebooks/temp/
+notebooks/day2/temp/
 figures/
 performance/
 
