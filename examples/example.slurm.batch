@@ -8,7 +8,6 @@
 #SBATCH --output=slurm-%j.out
 
 # load appropriate modules
-module use --append /home/software/denali/contrib/impd/modulefiles
 module load modflow/6.4.3.dev0
 
 # define paths relative to the root directory
