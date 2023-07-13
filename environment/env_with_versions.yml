@@ -1,4 +1,4 @@
-name: mf6pro2
+name: mf6pro
 channels:
   - conda-forge
   - defaults
