@@ -3,7 +3,7 @@
 #SBATCH --job-name=par_gwf01-2d
 #SBATCH --nodes=1
 #SBATCH --ntasks=2
-#SBATCH --account=impd
+#SBATCH --account=training
 #SBATCH --time=00:02:00
 #SBATCH --output=slurm-%j.out
 
